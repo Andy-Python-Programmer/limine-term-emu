@@ -160,6 +160,15 @@ int main(int argc, char **argv) {
     XImage *image = XCreateImage(display, DefaultVisual(display, screen), depth, ZPixmap, 0, (char *)framebuffer, win_size.ws_xpixel, win_size.ws_ypixel, 32, 0);
 
     for (;;) {
-        XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
+        while (XPending(display) > 0) {
+            XEvent e;
+            XNextEvent(display, &e);
+
+            if (e.type == KeyPress) {
+                // TODO
+            }
+
+            XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
+        }
     }
 }
