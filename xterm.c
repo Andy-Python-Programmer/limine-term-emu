@@ -142,8 +142,7 @@ int main(int argc, char **argv) {
     pthread_t pty_thread;
 
     if (pthread_create(&pty_thread, NULL, read_from_pty, NULL) != 0) {
-        printf("Could not create PTY reader thread\n");
-        return 1;
+        goto cleanup;
     }
 
     while (true) {
@@ -171,4 +170,10 @@ int main(int argc, char **argv) {
             XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
         }
     }
+
+cleanup:
+    XFreeGC(display, gc);
+	XDestroyWindow(display, window);
+	XCloseDisplay(display);	
+    return 0;
 }
