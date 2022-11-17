@@ -1,10 +1,10 @@
 project('limine-term-emu', 'c', default_options: ['c_std=c11'])
 
-sdl2 = dependency('sdl2')
+libx11 = dependency('x11')
 c_files = files(
     'terminal/backends/framebuffer.c',
     'terminal/term.c',
-    'sdlterm.c',
+    'xterm.c',
 )
 
 pkgdatadir = join_paths(get_option('datadir'), 'limine-term-emu')
@@ -21,4 +21,4 @@ configure_file(
   configuration: conf
 )
 
-executable('limine-term', c_files, dependencies: [sdl2], install: true)
+executable('limine-term', c_files, dependencies: [libx11], install: true)
