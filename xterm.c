@@ -17,6 +17,7 @@
 #include <stdint.h>
 
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 
 #include "terminal/backends/framebuffer.h"
 #include "terminal/term.h"
@@ -29,6 +30,8 @@
 
 #define WINDOW_WIDTH (DEFAULT_COLS * (FONT_WIDTH + 1))
 #define WINDOW_HEIGHT (DEFAULT_ROWS * FONT_HEIGHT)
+
+#define WINDOW_TITLE "Limine Terminal"
 
 static int pty_master;
 bool is_running = true;
@@ -93,6 +96,8 @@ int main(int argc, char **argv) {
     GC gc = XCreateGC(display, window, 0, NULL);
     XSetForeground(display, gc, whiteColor);
 
+    XChangeProperty(display, window, XA_WM_NAME, XA_STRING, 8, PropModeReplace, (unsigned char *)WINDOW_TITLE, strlen(WINDOW_TITLE));
+
     // PTY setup
     pty_master = posix_openpt(O_RDWR);
 
@@ -155,7 +160,6 @@ int main(int argc, char **argv) {
     XImage *image = XCreateImage(display, DefaultVisual(display, screen), depth, ZPixmap, 0, (char *)framebuffer, win_size.ws_xpixel, win_size.ws_ypixel, 32, 0);
 
     for (;;) {
-        sleep(1);
         XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
     }
 }
