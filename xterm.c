@@ -75,6 +75,29 @@ int main(int argc, char **argv) {
         .ws_ypixel = WINDOW_HEIGHT,
     };
 
+    // PTY setup
+    pty_master = posix_openpt(O_RDWR);
+
+    unlockpt(pty_master);
+    grantpt(pty_master);
+
+    int pid = fork();
+
+    if (pid == 0) {
+        int pty_slave = open(ptsname(pty_master), O_RDWR | O_NOCTTY);
+
+        close(pty_master);
+        ioctl(pty_slave, TIOCSCTTY, 0);
+        ioctl(pty_slave, TIOCSWINSZ, &win_size);
+
+        dup2(pty_slave, 0);
+        dup2(pty_slave, 1);
+        dup2(pty_slave, 2);
+        close(pty_slave);
+
+        execlp("/usr/bin/bash", "/usr/bin/bash", NULL);
+    }
+
     Display *display = XOpenDisplay(NULL);
     int screen = XDefaultScreen(display);
 
@@ -98,9 +121,6 @@ int main(int argc, char **argv) {
 
     XChangeProperty(display, window, XA_WM_NAME, XA_STRING, 8, PropModeReplace, (unsigned char *)WINDOW_TITLE, strlen(WINDOW_TITLE));
 
-    // PTY setup
-    pty_master = posix_openpt(O_RDWR);
-
     if (pty_master < 0) {
         printf("Could not open a PTY\n");
         return 1;
@@ -117,27 +137,6 @@ int main(int argc, char **argv) {
         (uint32_t *)framebuffer, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH * 4,
         NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, 0, 1, 1, 0
     );
-
-    unlockpt(pty_master);
-    grantpt(pty_master);
-
-    int pid = fork();
-
-    if (pid == 0) {
-        int pty_slave = open(ptsname(pty_master), O_RDWR | O_NOCTTY);
-
-        close(pty_master);
-        ioctl(pty_slave, TIOCSCTTY, 0);
-        ioctl(pty_slave, TIOCSWINSZ, &win_size);
-        setsid();
-
-        dup2(pty_slave, 0);
-        dup2(pty_slave, 1);
-        dup2(pty_slave, 2);
-        close(pty_slave);
-
-        execlp("/bin/bash", "/bin/bash", "-l", NULL);
-    }
 
     pthread_t pty_thread;
 
@@ -159,16 +158,7 @@ int main(int argc, char **argv) {
     XImage *image = XCreateImage(display, DefaultVisual(display, screen), depth, ZPixmap, 0, (char *)framebuffer, win_size.ws_xpixel, win_size.ws_ypixel, 32, 0);
 
     for (;;) {
-        while (XPending(display) > 0) {
-            XEvent e;
-            XNextEvent(display, &e);
-
-            if (e.type == KeyPress) {
-                // TODO
-            }
-
-            XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
-        }
+        XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
     }
 
 cleanup:
