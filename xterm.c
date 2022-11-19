@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
             XLookupString(&event.xkey, text, sizeof(text), &keysym, &status);
 
             if (keysym == XK_Up) strcpy(text, "\x1b[A");
-
+            printf("%s\n", text);
             write(pty_master, &text, strlen(text));
         }
 
