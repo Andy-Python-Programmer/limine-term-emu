@@ -18,6 +18,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/Xutil.h>
 
 #include "terminal/backends/framebuffer.h"
 #include "terminal/term.h"
@@ -155,9 +156,24 @@ int main(int argc, char **argv) {
         }
     }
 
+    XEvent event;
     XImage *image = XCreateImage(display, DefaultVisual(display, screen), depth, ZPixmap, 0, (char *)framebuffer, win_size.ws_xpixel, win_size.ws_ypixel, 32, 0);
 
     for (;;) {
+        XNextEvent(display, &event);
+
+        if (event.type == KeyPress) {
+            KeySym keysym = NoSymbol;
+            XComposeStatus status;
+
+            char text[16] = {};
+            XLookupString(&event.xkey, text, sizeof(text), &keysym, &status);
+
+            if (keysym == XK_Up) strcpy(text, "\x1b[A");
+
+            write(pty_master, &text, strlen(text));
+        }
+
         XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
     }
 
