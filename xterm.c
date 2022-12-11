@@ -39,17 +39,6 @@ bool is_running = true;
 
 struct term_context *context = NULL;
 uint8_t *framebuffer = NULL;
-XImage *image;
-Display *display;
-Window window;
-GC gc;
-
-struct winsize win_size = {
-    .ws_col = DEFAULT_COLS,
-    .ws_row = DEFAULT_ROWS,
-    .ws_xpixel = WINDOW_WIDTH,
-    .ws_ypixel = WINDOW_HEIGHT,
-};
 
 static void *read_from_pty(void *arg) {
     (void)arg;
@@ -69,8 +58,6 @@ static void *read_from_pty(void *arg) {
         }
 
         term_write(context, buffer, read_bytes);
-        if (image) 
-            XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
     }
 
     is_running = false;
@@ -80,6 +67,14 @@ static void *read_from_pty(void *arg) {
 int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
+
+    // Window Creation
+    struct winsize win_size = {
+        .ws_col = DEFAULT_COLS,
+        .ws_row = DEFAULT_ROWS,
+        .ws_xpixel = WINDOW_WIDTH,
+        .ws_ypixel = WINDOW_HEIGHT,
+    };
 
     // PTY setup
     pty_master = posix_openpt(O_RDWR);
@@ -104,7 +99,7 @@ int main(int argc, char **argv) {
         execlp("/usr/bin/bash", "/usr/bin/bash", NULL);
     }
 
-    display = XOpenDisplay(NULL);
+    Display *display = XOpenDisplay(NULL);
     int screen = XDefaultScreen(display);
 
     int blackColor = BlackPixel(display, screen);
@@ -117,13 +112,12 @@ int main(int argc, char **argv) {
     attr.background_pixel = BlackPixel(display, screen);
 
     int depth = DefaultDepth(display, screen);
-    window = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, win_size.ws_xpixel, win_size.ws_ypixel, 0, blackColor, blackColor);
+    Window window = XCreateSimpleWindow(display, DefaultRootWindow(display), 0, 0, win_size.ws_xpixel, win_size.ws_ypixel, 0, blackColor, blackColor);
 
     XSelectInput(display, window, StructureNotifyMask | KeyPressMask | KeyReleaseMask);
     XMapWindow(display, window);
-    // XInitThreads();
 
-    gc = XCreateGC(display, window, 0, NULL);
+    GC gc = XCreateGC(display, window, 0, NULL);
     XSetForeground(display, gc, whiteColor);
 
     XChangeProperty(display, window, XA_WM_NAME, XA_STRING, 8, PropModeReplace, (unsigned char *)WINDOW_TITLE, strlen(WINDOW_TITLE));
@@ -163,7 +157,7 @@ int main(int argc, char **argv) {
     }
 
     XEvent event;
-    image = XCreateImage(display, DefaultVisual(display, screen), depth, ZPixmap, 0, (char *)framebuffer, win_size.ws_xpixel, win_size.ws_ypixel, 32, 0);
+    XImage *image = XCreateImage(display, DefaultVisual(display, screen), depth, ZPixmap, 0, (char *)framebuffer, win_size.ws_xpixel, win_size.ws_ypixel, 32, 0);
 
     for (;;) {
         XNextEvent(display, &event);
@@ -178,8 +172,9 @@ int main(int argc, char **argv) {
             if (keysym == XK_Up) strcpy(text, "\x1b[A");
 
             write(pty_master, &text, strlen(text));
-            XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
         }
+
+        XPutImage(display, window, gc, image, 0, 0, 0, 0, win_size.ws_xpixel, win_size.ws_ypixel);
     }
 
 cleanup:
